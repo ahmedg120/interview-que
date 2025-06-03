@@ -1,33 +1,20 @@
 from flask import Flask, request, jsonify
 from transformers import T5Tokenizer, T5ForConditionalGeneration
 import torch
-import os
-import gdown
 
 app = Flask(__name__)
 
-# Constants
-MODEL_DIR = "t5_question_gen_model"
-DRIVE_URL = "https://drive.google.com/drive/folders/18InW9XucY1lvlNAo6qzfshWyNpClNXMr?usp=sharing" 
+# Load tokenizer and model from Hugging Face Hub
+HF_REPO = "Ahmedg120/t5-question-gen"
 
-def download_and_extract_model():
-    if not os.path.exists(MODEL_DIR):
-        print("Downloading model from Google Drive...")
-        os.makedirs(MODEL_DIR, exist_ok=True)
-        gdown.download(DRIVE_URL, output="model.zip", quiet=False)
-        import zipfile
-        with zipfile.ZipFile("model.zip", "r") as zip_ref:
-            zip_ref.extractall(MODEL_DIR)
-        os.remove("model.zip")
-        print("Model downloaded and extracted.")
+tokenizer = T5Tokenizer.from_pretrained(HF_REPO)
+model = T5ForConditionalGeneration.from_pretrained(HF_REPO)
 
-# Load model/tokenizer
-download_and_extract_model()
-tokenizer = T5Tokenizer.from_pretrained(MODEL_DIR)
-model = T5ForConditionalGeneration.from_pretrained(MODEL_DIR)
+# Move model to appropriate device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
+# Function to generate questions
 def generate_questions(description, num_questions=10):
     input_text = f"Given the following job description, generate a specific technical interview question: {description}"
     inputs = tokenizer(
@@ -50,6 +37,7 @@ def generate_questions(description, num_questions=10):
 
     return [tokenizer.decode(output, skip_special_tokens=True) for output in outputs]
 
+# POST endpoint to generate questions
 @app.route('/generate', methods=['POST'])
 def generate():
     data = request.get_json()
@@ -61,9 +49,11 @@ def generate():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# GET endpoint for health check
 @app.route('/', methods=['GET'])
 def home():
     return "T5 Interview Question Generator is running!"
 
+# Run the app locally
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)
