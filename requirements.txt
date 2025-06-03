@@ -1,6 +1,6 @@
 flask
 transformers
-torch
+torch==2.0.1
 requests
 gdown
 gunicorn
